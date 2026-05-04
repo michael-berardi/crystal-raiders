@@ -14,6 +14,10 @@ export class BlockPicker {
   private highlightGeometry: THREE.BoxGeometry | null = null;
   private highlightMaterial: THREE.MeshBasicMaterial | null = null;
   
+  getMousePosition(): THREE.Vector2 {
+    return this.mouse.clone();
+  }
+
   constructor(private scene: THREE.Scene, private camera: THREE.PerspectiveCamera) {
     // Create highlight mesh
     this.highlightGeometry = new THREE.BoxGeometry(1, 1, 1);

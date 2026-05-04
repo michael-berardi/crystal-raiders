@@ -1,52 +1,67 @@
 import { MAPFile } from './map';
 
-export function createTestMap(width: number = 32, height: number = 32): MAPFile {
+export function createTestMap(width: number = 40, height: number = 40): MAPFile {
   const map = new MAPFile();
   
-  // Create a simple test terrain with some variation
   const blocks = new Uint16Array(width * height);
+  const cx = Math.floor(width / 2);
+  const cy = Math.floor(height / 2);
   
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      // Create a simple heightfield with some noise-like variation
-      let h = 0;
+      let h = 2; // Base floor height
+      let tex = 0x00; // Floor
       
-      // Base terrain - higher in corners
-      h = Math.floor(
-        (Math.sin(x * 0.2) + Math.cos(y * 0.2)) * 3 +
-        (Math.sin(x * 0.1 + y * 0.1) * 4) +
-        8
-      );
+      // Distance from center
+      const distFromCenter = Math.max(Math.abs(x - cx), Math.abs(y - cy));
       
-      // Clamp to valid range
-      h = Math.max(0, Math.min(255, h));
-      
-      // Create some walls (higher difference areas)
-      if (x > 10 && x < 22 && y > 10 && y < 22) {
-        if (x === 11 || x === 21 || y === 11 || y === 21) {
-          h = 20; // Wall ring
+      if (distFromCenter > 3) {
+        // Outer ring - walls
+        if (distFromCenter < 6) {
+          // Inner wall ring - loose rock
+          h = 12;
+          tex = 0x02;
+        } else if (distFromCenter < 9) {
+          // Medium rock
+          h = 16;
+          tex = 0x03;
+        } else if (distFromCenter < 12) {
+          // Hard rock
+          h = 20;
+          tex = 0x04;
         } else {
-          h = 2; // Interior cavern
+          // Immovable boundary
+          h = 24;
+          tex = 0x05;
         }
       }
       
-      // Texture in upper 8 bits
-      let tex = 0;
-      if (h > 15) {
-        tex = 0x05; // Hard wall
-      } else if (h > 10) {
-        tex = 0x03; // Medium wall
-      } else if (h > 5) {
-        tex = 0x02; // Loose wall
-      } else {
-        tex = 0x00; // Floor
+      // Add some crystal seams in the medium rock
+      if (tex === 0x03 && ((x + y) % 7 === 0)) {
+        tex = 0x20; // Crystal seam
+      }
+      
+      // Add some ore seams in loose rock
+      if (tex === 0x02 && ((x * y) % 11 === 0)) {
+        tex = 0x40; // Ore seam
+      }
+      
+      // Create some corridors/chambers
+      if (Math.abs(x - cx) < 2 || Math.abs(y - cy) < 2) {
+        h = 2;
+        tex = 0x00;
+      }
+      
+      // Random caverns
+      if ((x * 7 + y * 13) % 23 === 0 && distFromCenter > 5 && distFromCenter < 11) {
+        h = 2;
+        tex = 0x00;
       }
       
       blocks[y * width + x] = (tex << 8) | h;
     }
   }
   
-  // Manually set up the map
   (map as any).dimensions = { width, height };
   (map as any).blocks = blocks;
   

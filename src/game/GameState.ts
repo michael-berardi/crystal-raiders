@@ -18,6 +18,8 @@ export enum SurfaceType {
   WallImmovable = 5,
   CrystalSeam = 0x20,
   OreSeam = 0x40,
+  Lava = 0x70,
+  Water = 0x71,
 }
 
 export interface Block {
@@ -58,7 +60,33 @@ export interface GameResources {
   minifigures: number;
 }
 
-export class GameState {
+export interface GameObjectives {
+  crystalsNeeded: number;
+  crystalsCollected: number;
+  timeLimit: number;
+  timeElapsed: number;
+  completed: boolean;
+}
+
+export interface GameState {
+  blocks: Block[][];
+  units: Unit[];
+  buildings: Building[];
+  resources: GameResources;
+  selectedUnits: Set<string>;
+  hoveredBlock: { bx: number; by: number } | null;
+  objectives: GameObjectives;
+  terrainDirty: boolean;
+  initializeBlocks(width: number, height: number): void;
+  setBlockHeight(bx: number, by: number, height: number): void;
+  setBlockTexture(bx: number, by: number, texture: number): void;
+  spawnUnit(type: string, x: number, y: number, z: number): Unit;
+  selectUnit(id: string): void;
+  selectUnitsInArea(x1: number, y1: number, x2: number, y2: number): void;
+  getSelectedUnits(): Unit[];
+}
+
+export class GameStateImpl implements GameState {
   public blocks: Block[][] = [];
   public units: Unit[] = [];
   public buildings: Building[] = [];
@@ -71,6 +99,14 @@ export class GameState {
   
   public selectedUnits: Set<string> = new Set();
   public hoveredBlock: { bx: number; by: number } | null = null;
+  public objectives: GameObjectives = {
+    crystalsNeeded: 0,
+    crystalsCollected: 0,
+    timeLimit: 0,
+    timeElapsed: 0,
+    completed: false
+  };
+  public terrainDirty = false;
   
   initializeBlocks(width: number, height: number): void {
     this.blocks = [];
@@ -93,18 +129,20 @@ export class GameState {
   setBlockHeight(bx: number, by: number, height: number): void {
     if (this.blocks[by] && this.blocks[by][bx]) {
       this.blocks[by][bx].height = height;
+      this.terrainDirty = true;
     }
   }
-  
+
   setBlockTexture(bx: number, by: number, texture: number): void {
     if (this.blocks[by] && this.blocks[by][bx]) {
       this.blocks[by][bx].texture = texture;
+      this.terrainDirty = true;
     }
   }
   
   spawnUnit(type: string, x: number, y: number, z: number): Unit {
     const unit: Unit = {
-      id: `unit_${Date.now()}_${Math.random()}`,
+      id: `unit_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       type,
       x,
       y,
